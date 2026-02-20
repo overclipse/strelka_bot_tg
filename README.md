@@ -27,6 +27,7 @@ cp .env.example .env
 - `WEB_HOST` — хост web-сервиса (по умолчанию `0.0.0.0`)
 - `WEB_PORT` — порт web-сервиса (по умолчанию `8080`)
 - `SQLITE_PATH` — путь к SQLite-файлу (по умолчанию `./data/bot.db`)
+- `STRELKA_CARD_TYPE_ID` — `cardtypeid` для API (по умолчанию `3ae427a1-0f17-4524-acb1-a3f50090a8f3`)
 
 ## Локальный запуск
 

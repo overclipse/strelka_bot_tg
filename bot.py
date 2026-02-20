@@ -15,6 +15,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 
 BASE_DIR = Path(__file__).resolve().parent
 STRELKA_STATUS_URL = "https://strelkacard.ru/api/cards/status/"
+DEFAULT_CARD_TYPE_ID = "3ae427a1-0f17-4524-acb1-a3f50090a8f3"
 
 logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s", level=logging.INFO
@@ -89,35 +90,33 @@ def parse_status_response(data: Any) -> str:
         raise ValueError("Непредвиденный формат ответа API")
 
     card = data.get("card") if isinstance(data.get("card"), dict) else data
-
-    balance = card.get("balance")
-    if balance is None:
-        balance = card.get("balanceRur")
-
-    card_number = card.get("cardNumber") or card.get("number")
-    status = card.get("status")
+    balance_raw = card.get("balance")
+    card_active = card.get("cardactive")
+    card_blocked = card.get("cardblocked")
+    trips = card.get("numoftrips")
 
     lines = ["Информация по карте:"]
-    if card_number is not None:
-        lines.append(f"Номер: {card_number}")
-    if balance is not None:
-        lines.append(f"Баланс: {balance}")
-    if status is not None:
-        lines.append(f"Статус: {status}")
+    if isinstance(balance_raw, (int, float)):
+        lines.append(f"Баланс: {balance_raw / 100:.2f} руб. ({int(balance_raw)} коп.)")
+    elif balance_raw is not None:
+        lines.append(f"Баланс: {balance_raw}")
 
-    extra_keys = ["lastTransactionDate", "lastRefillDate", "tariffName"]
-    for key in extra_keys:
-        if key in card and card[key] not in (None, ""):
-            lines.append(f"{key}: {card[key]}")
+    if card_active is not None:
+        lines.append(f"Карта активна: {'да' if bool(card_active) else 'нет'}")
+    if card_blocked is not None:
+        lines.append(f"Карта заблокирована: {'да' if bool(card_blocked) else 'нет'}")
+    if trips is not None:
+        lines.append(f"Поездок: {trips}")
 
     if len(lines) == 1:
-        lines.append("API не вернуло ожидаемые поля (balance/status).")
+        lines.append("API не вернуло ожидаемые поля (balance/cardactive/cardblocked).")
 
     return "\n".join(lines)
 
 
 def fetch_card_status(card_number: str) -> str:
-    params = {"cardNumber": card_number}
+    card_type_id = os.getenv("STRELKA_CARD_TYPE_ID", DEFAULT_CARD_TYPE_ID)
+    params = {"cardnum": card_number, "cardtypeid": card_type_id}
     response = requests.get(STRELKA_STATUS_URL, params=params, timeout=20)
     response.raise_for_status()
 
